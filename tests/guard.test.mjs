@@ -34,6 +34,93 @@ const allowed = (...a) => assert.equal(call(...a), null, `expected ALLOW for ${J
 const denied = (...a) => assert.notEqual(call(...a), null, `expected DENY for ${JSON.stringify(a[1])}`);
 const bash = (command, extraEnv) => call('Bash', { command }, extraEnv);
 
+describe('secret-file mode (AUDIT_NO_SECRET_FILES=1)', () => {
+  const S = { AUDIT_NO_SECRET_FILES: '1' };
+  const sAllowed = (tool, input) => allowed(tool, input, S);
+  const sDenied = (tool, input) => denied(tool, input, S);
+  test('off by default: credentials files stay readable', () => {
+    allowed('Read', { file_path: path.join(target, '.env') });
+    allowed('Bash', { command: 'cat .env' });
+  });
+  test('Read blocks .env, .env.local, keys and tokens', () => {
+    for (const f of ['.env', '.env.local', '.env.production', 'server.pem', 'tls/private.key', 'id_rsa', '.npmrc', '.netrc', 'credentials.json']) {
+      sDenied('Read', { file_path: path.join(target, f) });
+    }
+  });
+  test('Read still allows source files and example env files', () => {
+    for (const f of ['src/app.js', '.env.example', '.env.sample', 'README.md', 'id_rsa.pub', 'keyboard.js']) {
+      sAllowed('Read', { file_path: path.join(target, f) });
+    }
+  });
+  test('Bash cat/head of a credentials file is blocked', () => {
+    sDenied('Bash', { command: 'cat .env' });
+    sDenied('Bash', { command: 'head -n 3 config/.env.local' });
+    sAllowed('Bash', { command: 'cat src/app.js' });
+  });
+  test('recursive grep is blocked, grep of named files is not', () => {
+    sDenied('Bash', { command: 'grep -rn password .' });
+    sDenied('Bash', { command: 'grep --recursive password .' });
+    sAllowed('Bash', { command: 'grep -n password src/app.js' });
+  });
+  test('Windows name aliases of credentials files are blocked', () => {
+    for (const f of ['.env.', '.env ', '.env::$DATA', '.env:stream', 'id_rsa.', 'server.pem ', '.ENV', '.Env.Local']) sDenied('Read', { file_path: path.join(target, f) });
+    sDenied('Bash', { command: 'cat .env.' });
+    sDenied('Bash', { command: "cat '.env '" });
+    sAllowed('Bash', { command: 'git log --stat HEAD~2' });
+  });
+  test('8.3 short names are refused on Windows only', () => {
+    const r = call('Read', { file_path: path.join(target, 'ENV~1') }, S);
+    if (process.platform === 'win32') assert.notEqual(r, null); else assert.equal(r, null);
+  });
+  test('option values cannot name credentials files', () => {
+    for (const c of ['grep -f.env x src/app.js', 'grep -e x -f.env src/app.js', 'grep --exclude-from=.env x src/app.js', 'sort --files0-from=.env', 'head --files-from=.env', 'git log --stat --author=.env']) sDenied('Bash', { command: c });
+    sAllowed('Bash', { command: 'grep -n -e password src/app.js' });
+    sAllowed('Bash', { command: 'git log --stat --author=alice -n 3' });
+  });
+  test('wildcards cannot expand to credentials files', () => {
+    for (const c of ['cat .env*', 'cat .e?v', 'head .e[n]v', 'cat {.env,x}', 'cat *.pem', 'git log --stat -- .en*', 'grep -n x .e*']) sDenied('Bash', { command: c });
+    sAllowed('Bash', { command: 'cat src/*.js' });
+    sAllowed('Bash', { command: 'wc -l src/*.js' });
+  });
+  test('git show/diff refuse raw object ids and rev:path forms', () => {
+    for (const c of ['git show --stat abc1234def', 'git show --stat 4b825dc642cb6eb9a060e54bf8d69288fbee4904', 'git show --stat HEAD:src', 'git diff --stat abc1234 def5678', 'git show --stat abc1234~1']) sDenied('Bash', { command: c });
+    sAllowed('Bash', { command: 'git show --stat HEAD~2' });
+    sAllowed('Bash', { command: 'git diff --stat main' });
+  });
+  test('git cannot print credentials files from history', () => {
+    sDenied('Bash', { command: 'git show HEAD:.env' });
+    sDenied('Bash', { command: 'git log -p' });
+    sDenied('Bash', { command: 'git log -S password' });
+    sDenied('Bash', { command: 'git grep password' });
+    sDenied('Bash', { command: 'git show HEAD' });
+    sAllowed('Bash', { command: 'git log --oneline -n 5' });
+    sAllowed('Bash', { command: 'git show --stat HEAD' });
+    // allowlist, not denylist: every content-printing flag is refused
+    for (const flag of ['-U5', '--unified=3', '--cc', '-c', '-m', '--raw', '--patch-with-stat', '--full-diff', '--textconv', '-p', '-G', '--diff-filter=A']) {
+      sDenied('Bash', { command: `git log --stat ${flag}` });
+      sDenied('Bash', { command: `git show --stat ${flag} HEAD` });
+    }
+    sAllowed('Bash', { command: 'git log --oneline --stat -n 3 --author=alice' });
+  });
+  test('Grep tool: content output needs a non-credentials glob', () => {
+    sDenied('Grep', { pattern: 'x', output_mode: 'content' });
+    sDenied('Grep', { pattern: 'x', output_mode: 'content', glob: '*' });
+    sDenied('Grep', { pattern: 'x', output_mode: 'content', glob: '**/.env*' });
+    for (const glob of ['{*.js,.env*}', '**/.e*', '.[e]nv', '.env', '**/id_rsa', '*.{js,pem}', '!*.js']) {
+      sDenied('Grep', { pattern: 'x', output_mode: 'content', glob });
+    }
+    sAllowed('Grep', { pattern: 'x', output_mode: 'content', glob: '*.js' });
+    sAllowed('Grep', { pattern: 'x', output_mode: 'content', glob: 'src/**/*.{js,ts}' });
+    // files_with_matches/count are an oracle for credentials content, so they need a glob/type too
+    for (const output_mode of ['files_with_matches', 'count', undefined]) {
+      sDenied('Grep', { pattern: '^KEY=AKIA[A-M]', output_mode });
+      sDenied('Grep', { pattern: 'x', glob: '.env', output_mode });
+      sAllowed('Grep', { pattern: 'x', glob: '*.js', output_mode });
+      sAllowed('Grep', { pattern: 'x', type: 'js', output_mode });
+    }
+  });
+});
+
 describe('read tools', () => {
   test('Read inside target', () => allowed('Read', { file_path: path.join(target, 'src', 'app.js') }));
   test('Read inside harness', () => allowed('Read', { file_path: path.join(harness, 'workflow', 'rubric.md') }));

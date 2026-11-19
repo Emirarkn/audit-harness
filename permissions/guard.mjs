@@ -91,6 +91,78 @@ function checkReadPath(p, ctx, label = 'path') {
   if (p === undefined || p === null || p === '') return null;
   const abs = resolvePath(p, ctx);
   if (!inRoots(abs, ctx)) return `${label} "${p}" is outside the audit roots (AUDIT_TARGET and the harness)`;
+  return checkSecretName(p, ctx, label, abs);
+}
+
+// ---------------------------------------------------------------- secret-file mode
+// Opt-in (AUDIT_NO_SECRET_FILES=1, runner flag --no-secret-files): files that normally hold live
+// credentials are not readable, so their contents never reach the model. Best effort: names are
+// matched, not contents. Hard-coded secrets in source files are still read (gitleaks, which
+// redacts, covers them). See permissions/POLICY.md "Secret-file mode".
+const SECRET_SAFE_ENV = /\.(example|sample|template|dist|defaults?)$/i;
+export function isSecretFileName(name) {
+  const n = String(name || '');
+  if (/^\.env(\..+)?$/i.test(n)) return !SECRET_SAFE_ENV.test(n);
+  return /\.(pem|key|p12|pfx|jks|keystore)$/i.test(n)
+    || /^id_(rsa|dsa|ecdsa|ed25519)$/i.test(n)
+    || /^(\.npmrc|\.pypirc|\.netrc|\.git-credentials|credentials(\.json)?)$/i.test(n);
+}
+
+const GIT_META_FLAGS = [
+  /^--(oneline|stat|shortstat|numstat|name-only|name-status|graph|decorate|no-decorate|all|no-merges|merges|follow|abbrev-commit|date-order|topo-order|reverse|stat=\d+(,\d+)*)$/,
+  /^-n\d*$/, /^-\d+$/, /^--max-count=\d+$/, /^--(since|until|after|before|author|committer|grep)=[^;&|`$<>]*$/,
+  /^--(format|pretty)=[^`$]*$/, /^--no-pager$/,
+];
+
+// Small glob -> RegExp (*, **, ?, {a,b}); enough to ask "would this glob select a credentials file?".
+function globToRegex(glob) {
+  let re = '', brace = 0;
+  for (let i = 0; i < glob.length; i++) {
+    const c = glob[i];
+    if (c === '*') { if (glob[i + 1] === '*') { re += '.*'; i++; if (glob[i + 1] === '/') i++; } else re += '[^/]*'; }
+    else if (c === '?') re += '[^/]';
+    else if (c === '{') { re += '(?:'; brace++; }
+    else if (c === '}' && brace) { re += ')'; brace--; }
+    else if (c === ',' && brace) re += '|';
+    else re += c.replace(/[.+^$()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`, 'i');
+}
+const CREDENTIAL_SAMPLES = ['.env', '.env.local', '.env.production', 'id_rsa', 'id_dsa', 'id_ecdsa', 'id_ed25519', 'server.pem', 'tls.key', 'cert.p12', 'cert.pfx', 'store.jks', 'app.keystore', '.npmrc', '.pypirc', '.netrc', '.git-credentials', 'credentials', 'credentials.json'];
+export function globSelectsSecretFiles(glob) {
+  if (/[\[\]!]/.test(String(glob))) return true; // character classes/negation: fail closed
+  let re;
+  try { re = globToRegex(String(glob).trim().replace(/^\.?\//, '')); } catch { return true; } // unparsable: fail closed
+  // ripgrep matches slash-less globs against the file name at any depth
+  return CREDENTIAL_SAMPLES.some(n => re.test(n) || re.test(`a/b/${n}`));
+}
+
+// Every name the file system could resolve this argument to. Windows ignores trailing dots and
+// spaces (`.env.`, `.env `), treats `name:stream` / `name::$DATA` as the same file, and has 8.3
+// short names (`ENV~1`); git takes `rev:path`. All of those spellings are tested.
+function nameCandidates(p) {
+  const out = new Set();
+  const last = String(p).split(/[\\/]/).pop();
+  for (const n of [last, last.split(':')[0], String(p).split(':').pop().split(/[\\/]/).pop()]) {
+    out.add(n);
+    out.add(n.replace(/[. ]+$/, ''));
+  }
+  return [...out].filter(Boolean);
+}
+
+function checkSecretName(p, ctx, label = 'path', resolved = null) {
+  if (!ctx.noSecretFiles) return null;
+  const names = nameCandidates(p);
+  // a symlink/junction to a credentials file is judged by its target's name too
+  if (resolved) names.push(...nameCandidates(resolved));
+  for (const last of names) {
+    // The shell (and git pathspecs) expand wildcards after the guard has looked at the name:
+    // `cat .en?` is `cat .env`. A wildcard that could select a credentials file is refused.
+    if (/[*?[{]/.test(last) && globSelectsSecretFiles(last)) return `${label} "${p}" uses a wildcard that could expand to a credentials file; name the files explicitly (secret-file mode)`;
+    if (isSecretFileName(last)) return `${label} "${p}" is a credentials file; secret-file mode (--no-secret-files) keeps its contents out of the model's context`;
+  }
+  // 8.3 short names (ENV~1) are opaque aliases on Windows; refuse them for file paths (git refs like HEAD~2 are not file names)
+  if (ctx.win && label !== 'git argument' && /~\d/.test(String(p).split(/[\\/]/).pop())) return `${label} "${p}" looks like a Windows 8.3 short name, which can alias a credentials file (secret-file mode)`;
   return null;
 }
 
@@ -158,7 +230,27 @@ function checkGit(args, ctx) {
   }
   const sub = args[i];
   if (!GIT_READ_SUBCOMMANDS.has(sub)) return `git subcommand "${sub ?? '(none)'}" is not on the read-only allowlist`;
+  if (ctx.noSecretFiles) {
+    const rest = args.slice(i + 1);
+    if (sub === 'grep' || sub === 'cat-file') return `git ${sub} can print credentials files from any revision; not allowed in secret-file mode`;
+    // log/show/diff print file contents through many flags (-p, -U, --cc, -c, -m, --raw, -S, -G, …),
+    // so in this mode only a short allowlist of metadata-only flags is accepted.
+    if (/^(log|show|diff)$/.test(sub)) {
+      const bad = rest.find(a => a.startsWith('-') && a !== '--' && !GIT_META_FLAGS.some(re => re.test(a)));
+      if (bad) return `git ${sub} flag "${bad}" is not on the metadata-only allowlist (it can print file contents); not allowed in secret-file mode`;
+    }
+    // A bare object id can be a blob: `git show <blob-sha>` prints it whatever its file name was.
+    // Only ref names (HEAD, HEAD~2, branch, tag) are accepted; use `git log` to browse commits.
+    if (sub === 'show' || sub === 'diff') {
+      const hex = rest.find(a => !a.startsWith('-') && /^[0-9a-f]{7,40}$/i.test(a.split(/[~^@:]/)[0]));
+      if (hex) return `git ${sub} of a raw object id could print a credentials blob; use a ref name (secret-file mode)`;
+      const colon = rest.find(a => !a.startsWith('-') && a.includes(':'));
+      if (colon) return `git ${sub} "${colon}" addresses a file inside a revision; not allowed in secret-file mode`;
+    }
+    if ((sub === 'show' || sub === 'diff') && !rest.some(a => /^--(stat|shortstat|numstat|name-only|name-status)$/.test(a))) return `git ${sub} prints patches by default; add --stat or --name-only in secret-file mode`;
+  }
   for (const a of args.slice(i + 1)) {
+    const sErr = checkSecretName(a, ctx, 'git argument'); if (sErr) return sErr;
     if (GIT_FORBIDDEN_ARGS.some(re => re.test(a))) return `git argument "${a}" is not allowed (it can write files or run external programs)`;
     if (looksLikeOutsidePath(a)) {
       const err = checkReadPath(a, ctx, 'git path');
@@ -186,6 +278,9 @@ function checkGrep(args, ctx) {
   }
   const paths = patternGiven ? pos : pos.slice(1);
   for (const p of paths) { const e = checkReadPath(p, ctx); if (e) return e; }
+  if (ctx.noSecretFiles && args.some(a => a === '--recursive' || a === '--dereference-recursive' || /^-[A-Za-z]*[rR][A-Za-z]*$/.test(a))) {
+    return 'recursive grep would read credentials files; name the files explicitly or use the Grep tool with a glob (secret-file mode)';
+  }
   return null;
 }
 
@@ -201,6 +296,17 @@ function checkSegment(tokens, ctx) {
   const [cmd, ...args] = tokens;
   if (/[\\/]/.test(cmd)) return `call commands by bare name ("${cmd}" contains a path)`;
   if (cmd.includes('=')) return 'inline environment assignments are not allowed';
+  if (ctx.noSecretFiles) {
+    // Option values can name a file in forms the positional checks never see: --file=.env,
+    // --exclude-from=.env, --files0-from=.env, -f.env (value glued to a short option).
+    for (const a of args) {
+      if (!a.startsWith('-') || a === '--') continue;
+      const values = [a.includes('=') ? a.slice(a.indexOf('=') + 1) : null, /^-[A-Za-z]/.test(a) && !a.startsWith('--') ? a.slice(2) : null];
+      for (const v of values.filter(Boolean)) {
+        const e = checkSecretName(v, ctx, `option value in "${a}"`); if (e) return e;
+      }
+    }
+  }
   switch (cmd) {
     case 'cd': {
       if (args.length !== 1) return 'cd needs exactly one directory argument';
@@ -294,6 +400,7 @@ export function makeContext(env, input = {}, platform = process.platform) {
     harness: harnessReal,
     roots: [target, harnessReal],
     gitDisabled: env.AUDIT_GIT_DISABLED === '1',
+    noSecretFiles: env.AUDIT_NO_SECRET_FILES === '1',
   };
   ctx.cwd = input.cwd ? resolvePath(input.cwd, ctx) : harnessReal;
   return ctx;
@@ -320,8 +427,18 @@ export function decide(input, env, platform = process.platform) {
       }
       return null;
     }
-    case 'Grep':
-      return checkReadPath(ti.path || ctx.cwd, ctx, 'grep path');
+    case 'Grep': {
+      const e = checkReadPath(ti.path || ctx.cwd, ctx, 'grep path');
+      if (e) return e;
+      // Any output mode over a whole tree is a leak: content prints credentials lines, and
+      // files_with_matches/count answer "does this pattern match?", which is an oracle that can
+      // extract a secret one character at a time. Require a file-type restriction that excludes them.
+      if (ctx.noSecretFiles) {
+        if (!ti.glob && !ti.type) return 'Grep needs a glob or type in secret-file mode (otherwise it can search credentials files)';
+        if (ti.glob && globSelectsSecretFiles(ti.glob)) return `grep glob "${ti.glob}" would select credentials files (secret-file mode)`;
+      }
+      return null;
+    }
     case 'Write': {
       if (!ti.file_path) return 'Write without file_path';
       const want = P.join(ctx.target, 'AUDIT_REPORT.md');

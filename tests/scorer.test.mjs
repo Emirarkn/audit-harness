@@ -114,3 +114,22 @@ test('runner: dangerous git config disables git', () => {
   assert.equal(inspectGit(dir).enabled, true);
   fs.rmSync(dir, { recursive: true, force: true });
 });
+
+test('gateMetrics: location, severity and requirement accuracy are pooled across fixtures', async () => {
+  const { gateMetrics, PASS } = await import('./score.mjs');
+  const row = (name, perExpected, reqs, verdictOk = true) => ({ name, score: { perExpected, reqs, verdictOk } });
+  const good = { found: true, locationOk: true, severityOk: true };
+  const rows = [
+    row('a-vuln', [good, good, { ...good, locationOk: false }, { found: false }], [{ ok: true }, { ok: true }]),
+    row('b-vuln', [{ ...good, severityOk: false }, { ...good, locationOk: null }], [{ ok: false }]),
+    row('clean-project', [], [{ ok: true }]),
+  ];
+  const g = gateMetrics(rows);
+  assert.equal(g.location, 3 / 4);      // 4 found items with a line expectation, 1 wrong
+  assert.equal(g.severity, 4 / 5);      // 5 found items, 1 rated too low
+  assert.equal(g.requirements, 3 / 4);
+  assert.equal(g.verdictsOk, true);
+  assert.ok(g.location < PASS.location && g.severity < PASS.severity && g.requirements < PASS.requirements);
+  assert.equal(gateMetrics([row('x-vuln', [good], [{ ok: true }], false)]).verdictsOk, false);
+  assert.deepEqual(gateMetrics([]), { location: null, severity: null, requirements: null, verdictsOk: null });
+});

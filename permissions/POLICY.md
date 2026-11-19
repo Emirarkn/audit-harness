@@ -80,6 +80,25 @@ paths. The guard's Write rule (report file only) keeps the auditor from editing 
   var, never into the shell script inline.
 - Uploaded artifacts leave out `transcript.jsonl`, because it can contain file contents the auditor read.
 
+## Secret-file mode (`--no-secret-files`)
+Opt-in, set by the runner through `AUDIT_NO_SECRET_FILES=1`; the guard then also denies:
+
+| Tool | Extra rule |
+|---|---|
+| Read, Bash path arguments | Files named `.env`, `.env.*` (except `.example`, `.sample`, `.template`, `.dist`, `.default(s)`), `*.pem`, `*.key`, `*.p12`, `*.pfx`, `*.jks`, `*.keystore`, `id_rsa`/`id_dsa`/`id_ecdsa`/`id_ed25519`, `.npmrc`, `.pypirc`, `.netrc`, `.git-credentials`, `credentials`, `credentials.json`. |
+| Option values | Values glued to options are judged like paths: `--file=.env`, `--exclude-from=.env`, `--files0-from=.env`, `-f.env`. |
+| Windows aliases | Trailing dots/spaces (`.env.`), alternate data streams (`.env::$DATA`), 8.3 short names (`ENV~1`, refused on Windows) and the name of a symlink/junction target are judged like the real name. |
+| Bash and git path arguments | Wildcards (`* ? [ {`) that could expand to a credentials name are denied (`cat .env*`, `git log -- .en*`), because the shell expands them after the guard has read the name. |
+| Grep tool | Every call (any `output_mode`) needs a `glob` or `type`: `files_with_matches` and `count` would otherwise answer "does this pattern match the credentials file?", an oracle that can extract a secret character by character. The glob is converted to a regex and tested against sample credentials names (`.env`, `a/b/.env.local`, `id_rsa`, `x.pem`, `.npmrc`, …); any match is denied. Character classes and `!` negation are denied (fail closed). |
+| Bash `grep` | Recursive flags (`-r`, `-R`, `--recursive`) are denied. |
+| Bash `git` | `grep` and `cat-file` are denied. `log`/`show`/`diff` use an **allowlist** of metadata-only flags (`--oneline`, `--stat`, `--name-only`, `--name-status`, `--numstat`, `--shortstat`, `--graph`, `--decorate`, `-n<N>`, `--author=`, `--since=`, `--format=`, …); every other flag (`-p`, `-U`, `--cc`, `-c`, `-m`, `--raw`, `-S`, `-G`, `--textconv`, …) is denied. `show`/`diff` also need `--stat` or `--name-only`. `rev:path` arguments are denied, and so are raw object ids (a blob id would print the file whatever its name): use `HEAD`, `HEAD~N`, branch or tag names. |
+
+The auditor is told the mode is on and must list the blocked files as a coverage gap, relying on
+gitleaks (redacted) for secrets. **Residual risk:** matching is by file name; a secret in a
+differently named file, hard-coded in source, or in a text file the auditor reads normally still
+reaches the provider. This mode narrows what leaves the machine; it is not a confidentiality
+guarantee.
+
 ## Fail-closed behaviour
 - `AUDIT_TARGET` unset, unparsable hook input, or an exception: the call is **blocked**.
 - If `node` itself is missing, the hook cannot run. Claude Code treats a hook that fails to start
@@ -94,6 +113,8 @@ Blocked attempts are summarized in the runner's final output.
 ## Known limits
 - Shell parsing is conservative and might block an unusual but harmless command. The auditor is
   told to work around blocks with other allowed tools, not to fight them.
-- Reading `.env` and secrets inside the target is **allowed**, because the audit needs it. Secrets
-  reach the model's context. Redaction is enforced only at the report boundary.
+- By default, reading `.env` and secrets inside the target is **allowed**, because the audit needs
+  it. They reach the model's context, i.e. **they are sent to the model provider**; "read-only"
+  protects the project from changes, not its contents from the provider. Redaction is enforced only
+  at the report boundary. Use secret-file mode (below) when that is not acceptable.
 - Scanners run in the runner, outside the guard: they are trusted tools with fixed arguments.

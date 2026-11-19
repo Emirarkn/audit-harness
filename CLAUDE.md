@@ -91,6 +91,7 @@ first: reviewed lessons from earlier audits (checks to remember, not facts about
 | Sandbox skipped, failed or timed out | Say "dynamic testing not done" in scope and coverage gaps, state why (see `sandbox.json` reason), cap confidence at Medium, and judge tests statically: read each test file and say what it asserts and which core paths it leaves untested. |
 | Sandbox ran several modules (`sandbox.json` has `modules`) | Report each module's result separately; a module with a test suite that is missing from `modules`, or with `no-tests-collected`, is a coverage gap or a `missing` tests finding. |
 | Sandbox shows failing tests or a failed install | Verified COR finding citing the sandbox log, with the cause traced in the code. |
+| Prompt says `Secret-file mode: ON` | Credentials files (`.env*`, keys, `.npmrc`, …) and git patch output are blocked on purpose. List them as a coverage gap (their contents were not reviewed), rely on the redacted gitleaks output for secrets, and never try another way to read them. |
 | Tool call blocked by the guard | Do not try to work around it. Continue with what's allowed and note the limitation. |
 
 ### A7. Output contract

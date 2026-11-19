@@ -21,7 +21,9 @@ param(
     [switch]$Yes,
     [switch]$DryRun,
     [switch]$NoScanners,
-    [switch]$Sandbox
+    [switch]$Sandbox,
+    [switch]$NoSandbox,
+    [switch]$NoSecretFiles
 )
 
 $runner = Join-Path $PSScriptRoot 'audit.mjs'
@@ -33,6 +35,8 @@ if ($Yes)         { $nodeArgs += '--yes' }
 if ($DryRun)      { $nodeArgs += '--dry-run' }
 if ($NoScanners)  { $nodeArgs += '--no-scanners' }
 if ($Sandbox)     { $nodeArgs += '--sandbox' }
+if ($NoSandbox)     { $nodeArgs += '--no-sandbox' }
+if ($NoSecretFiles) { $nodeArgs += '--no-secret-files' }
 
 # Request text travels via an env var: Windows PowerShell 5.1 mangles embedded quotes in native args.
 if ($Request) { $env:AUDIT_REQUEST_TEXT = $Request }

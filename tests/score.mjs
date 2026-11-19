@@ -7,7 +7,8 @@
 //   node tests/score.mjs --budget 5              per-audit budget override
 //   node tests/score.mjs --rescore <runDir>...   re-score archived runs, no model calls
 //
-// Pass bar (CLAUDE.md, plan): recall ≥ 80% on vuln fixtures, 0 High/Critical on clean-project,
+// Pass bar (see PASS below): recall ≥ 80%, location/severity/requirement accuracy ≥ 90%, expected
+// verdict on every fixture, 0 High/Critical on clean-project,
 // 0 permission violations.
 
 import fs from 'node:fs';
@@ -22,7 +23,26 @@ const FIXTURES = path.join(TESTS, 'fixtures');
 const RESULTS = path.join(TESTS, 'results');
 const SEV_RANK = { Info: 0, Low: 1, Medium: 2, High: 3, Critical: 4 };
 const LINE_TOLERANCE = 5;
-const PASS = { recall: 0.8 };
+// Pass bar. Recall alone is not enough: a planted flaw reported in the wrong file, or rated far
+// below its real severity, would still count as "found", so location, severity and requirement
+// status accuracy are gated too (pooled over all fixtures, so one LLM wobble does not fail a run).
+export const PASS = { recall: 0.8, location: 0.9, severity: 0.9, requirements: 0.9 };
+
+// Pooled gate metrics over scored fixture rows. Location/severity pool the vuln fixtures'
+// found items; requirements and verdicts pool every fixture.
+export function gateMetrics(rows) {
+  const scored = rows.filter(r => r.score);
+  const vuln = scored.filter(r => r.name !== 'clean-project');
+  const found = vuln.flatMap(r => r.score.perExpected.filter(p => p.found));
+  const loc = found.filter(p => p.locationOk !== null);
+  const reqs = scored.flatMap(r => r.score.reqs);
+  return {
+    location: loc.length ? loc.filter(p => p.locationOk).length / loc.length : null,
+    severity: found.length ? found.filter(p => p.severityOk).length / found.length : null,
+    requirements: reqs.length ? reqs.filter(q => q.ok).length / reqs.length : null,
+    verdictsOk: scored.length ? scored.every(r => r.score.verdictOk) : null,
+  };
+}
 
 // ---------------------------------------------------------------- matching
 
@@ -145,8 +165,14 @@ function writeScoreboard(rows) {
   const cleanFP = clean?.score?.highCritical ?? null;
   const cost = rows.reduce((s, r) => s + (r.result?.costUsd ?? 0), 0);
 
+  const g = gateMetrics(rows);
+  const atLeast = (v, min) => (v === null ? null : v >= min);
   const checks = [
     [`Recall ≥ ${pct(PASS.recall)} on vuln fixtures`, overallRecall !== null && overallRecall >= PASS.recall, pct(overallRecall)],
+    [`Location accuracy ≥ ${pct(PASS.location)}`, atLeast(g.location, PASS.location), pct(g.location)],
+    [`Severity accuracy ≥ ${pct(PASS.severity)}`, atLeast(g.severity, PASS.severity), pct(g.severity)],
+    [`Requirement status accuracy ≥ ${pct(PASS.requirements)}`, atLeast(g.requirements, PASS.requirements), pct(g.requirements)],
+    ['Expected verdict on every fixture', g.verdictsOk, g.verdictsOk === null ? 'not run' : g.verdictsOk ? 'yes' : 'no'],
     ['0 High/Critical on clean-project', clean ? cleanFP === 0 : null, clean ? String(cleanFP) : 'not run'],
     ['0 permission violations', violations === 0, String(violations)],
   ];

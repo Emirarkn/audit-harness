@@ -3,7 +3,7 @@
 //
 //   node scripts/audit.mjs <target> [--spec <file>] [--request "<text>"] [--interactive]
 //                                   [--budget <usd>] [--yes] [--dry-run] [--no-scanners]
-//                                   [--sandbox | --no-sandbox]
+//                                   [--sandbox | --no-sandbox] [--no-secret-files]
 //
 // Exit codes: 0 Ship / Ship with fixes · 2 Do not ship · 3 permission violation · 4 run error
 // Flow and rationale: CLAUDE.md Part B, permissions/POLICY.md.
@@ -59,7 +59,7 @@ class RunError extends Error {}
 // ---------------------------------------------------------------- helpers
 
 export function parseArgs(argv) {
-  const o = { target: null, spec: null, request: null, interactive: false, budget: null, yes: false, dryRun: false, noScanners: false, sandbox: null };
+  const o = { target: null, spec: null, request: null, interactive: false, budget: null, yes: false, dryRun: false, noScanners: false, sandbox: null, noSecretFiles: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => { if (i + 1 >= argv.length) throw new RunError(`${a} needs a value`); return argv[++i]; };
@@ -71,6 +71,7 @@ export function parseArgs(argv) {
       case '--yes': o.yes = true; break;
       case '--dry-run': o.dryRun = true; break;
       case '--no-scanners': o.noScanners = true; break;
+      case '--no-secret-files': o.noSecretFiles = true; break;
       case '--sandbox': o.sandbox = true; break;
       case '--no-sandbox': o.sandbox = false; break;
       case '-h': case '--help': o.help = true; break;
@@ -247,6 +248,7 @@ export async function runAudit(opts, { quiet = false } = {}) {
     ...process.env, ...GIT_ENV,
     AUDIT_TARGET: target, AUDIT_HARNESS: HARNESS, AUDIT_RUN_DIR: runDir,
     AUDIT_GIT_DISABLED: git.enabled ? '0' : '1',
+    AUDIT_NO_SECRET_FILES: opts.noSecretFiles ? '1' : '0',
   };
   for (const k of ['CLAUDECODE', 'CLAUDE_CODE_ENTRYPOINT', 'AUDIT_REQUEST_TEXT']) delete env[k];
 
@@ -292,6 +294,7 @@ export async function runAudit(opts, { quiet = false } = {}) {
     `Previous report: ${previous ?? 'none (first audit)'}`,
     `Git: ${git.repo ? (git.enabled ? 'available (read-only subcommands)' : `disabled: ${git.reason}`) : 'not a git repository'}`,
     `Scanner output: ${path.join(scansDir, '_summary.json')}`,
+    `Secret-file mode: ${opts.noSecretFiles ? 'ON. Credentials files (.env*, *.pem, *.key, id_rsa, .npmrc, …) are blocked by the guard, so their contents are NOT reviewed: list them under coverage gaps and rely on gitleaks (redacted) for secrets. Every Grep call needs a glob or type (e.g. glob "*.js"), and recursive shell grep and git patch output are blocked. Do not try to read them another way.' : 'off (credentials files in the target are readable and reach the model provider)'}`,
     `Sandbox tests: ${sandbox.status === 'ran' ? `${sandbox.outcome}${sandbox.passed != null ? ` (${sandbox.passed} passed, ${sandbox.failed} failed)` : ''}; see ${path.join(scansDir, 'sandbox.json')}` : `${sandbox.status} (${sandbox.reason})`}`,
     `Coverage ledger: ${path.join(scansDir, 'inventory.json')} (${inventory.modules.length} modules, ${inventory.totalFiles} files, ${inventory.totalLines} lines). ${fullRead ? 'FULL READ REQUIRED: open every source file of every module; do not sample.' : 'Too large to read fully: prioritise, but list every module as Full / Sampled (with reason) / Not reviewed in the report.'}`,
     `Lessons from earlier audits: ${path.join(HARNESS, 'memory', 'lessons.md')}`,
@@ -442,7 +445,7 @@ function printSummary(r, denied) {
 // ---------------------------------------------------------------- CLI
 
 const USAGE = `usage: node scripts/audit.mjs <target> [--spec <file>] [--request "<text>"] [--interactive]
-                                [--budget <usd>] [--yes] [--dry-run] [--no-scanners] [--sandbox | --no-sandbox]`;
+                                [--budget <usd>] [--yes] [--dry-run] [--no-scanners] [--sandbox | --no-sandbox] [--no-secret-files]`;
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {

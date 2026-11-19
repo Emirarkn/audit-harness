@@ -122,6 +122,23 @@ You get:
 The workflow runs the sandbox by default, since GitHub runners have Docker. API usage is billed per
 run, so it never triggers on every push.
 
+## Data handling: "read-only" does not mean "stays local"
+The auditor is a cloud model. **Everything it reads from the project (source, config, `.env`,
+keys, git history) is sent to the model provider** (Anthropic API) as part of its context. The
+guard stops it from *changing* anything or sending data to arbitrary hosts, but it cannot stop
+the provider from receiving what the auditor opens.
+
+- Redaction only happens at the **report** boundary (secrets are cut to 4 characters there).
+- Scanner output is redacted (`gitleaks --redact`), but the auditor still reads the files itself.
+- Run with **`--no-secret-files`** (`-NoSecretFiles`) to block credentials files (`.env*`, `*.pem`,
+  `*.key`, `id_rsa`, `.npmrc`, …) and patch/pickaxe git output, so their contents never reach the
+  model. Best effort: it matches file names, not contents, and hard-coded secrets inside source
+  files are still read. See [Secret-file mode](permissions/POLICY.md#secret-file-mode---no-secret-files).
+- Do not audit a project whose source you are not allowed to send to the provider. For that, use
+  an on-premises/enterprise deployment that your data agreement covers, or audit only a sanitised copy.
+- `transcript.jsonl` in `runs/` can contain file contents the auditor read; keep `runs/` private
+  (it is gitignored and left out of CI artifacts).
+
 ## Safety model (short version)
 - Runs in its own session from this folder: your user settings, plugins and MCP connectors are **not** loaded.
 - The guard hook blocks:
@@ -148,8 +165,11 @@ npm run score                              # real audits of all 4 fixtures (cost
 npm run score -- --only webapp-vuln        # one fixture
 node tests/score.mjs --rescore runs\<id>   # re-score an archived run, free
 ```
-Pass bar:
+Pass bar (all must hold; accuracy figures are pooled over the fixtures):
 - recall ≥ 80% on the planted flaws
+- location accuracy ≥ 90% (right file and line) and severity accuracy ≥ 90% (not rated below the expected level)
+- requirement status accuracy ≥ 90% (Met / Partial / Missing / Contradicted)
+- the expected verdict on every fixture
 - 0 High/Critical false positives on `clean-project`
 - 0 permission violations
 
