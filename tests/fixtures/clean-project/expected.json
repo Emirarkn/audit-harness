@@ -1,0 +1,12 @@
+{
+  "fixture": "clean-project",
+  "expectedVerdict": ["Ship"],
+  "findings": [],
+  "requirements": {
+    "R1": ["Met"],
+    "R2": ["Met"],
+    "R3": ["Met"],
+    "R4": ["Met", "Partial"],
+    "R5": ["Met"]
+  }
+}

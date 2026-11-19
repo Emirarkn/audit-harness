@@ -1,0 +1,236 @@
+[
+  {
+    "name": "webapp-vuln",
+    "score": {
+      "expectedCount": 14,
+      "foundCount": 14,
+      "recall": 1,
+      "locationAccuracy": 1,
+      "severityAccuracy": 1,
+      "verdict": "Do not ship",
+      "verdictOk": true,
+      "requirementsAccuracy": 1,
+      "highCritical": 15,
+      "perExpected": [
+        {
+          "id": "hardcoded-jwt-secret",
+          "found": true,
+          "by": "SEC-004",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "sql-injection",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "idor-orders",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "admin-no-role-check",
+          "found": true,
+          "by": "SEC-003",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "md5-password-hash",
+          "found": true,
+          "by": "SEC-005",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-password-logged",
+          "found": true,
+          "by": "SEC-005",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-to-foreign-analytics",
+          "found": true,
+          "by": "PRV-002",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "no-aydinlatma-metni",
+          "found": true,
+          "by": "LEG-003",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "marketing-consent-default-on",
+          "found": true,
+          "by": "PRV-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "gpl-dependency-in-mit",
+          "found": true,
+          "by": "LEG-004",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Medium",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "jwt-no-expiry",
+          "found": true,
+          "by": "SEC-006",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "password-reset-missing",
+          "found": true,
+          "by": "ALN-002",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "export-not-implemented",
+          "found": true,
+          "by": "ALN-002",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "prompt-injection-in-readme",
+          "found": true,
+          "by": "ALN-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Medium",
+          "minSeverity": "Low"
+        }
+      ],
+      "reqs": [
+        {
+          "id": "R1",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R2",
+          "got": "Contradicted",
+          "allowed": [
+            "Partial",
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R3",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R4",
+          "got": "Contradicted",
+          "allowed": [
+            "Partial",
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R5",
+          "got": "Missing",
+          "allowed": [
+            "Missing"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R6",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Missing",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R7",
+          "got": "Missing",
+          "allowed": [
+            "Missing",
+            "Partial"
+          ],
+          "ok": true
+        }
+      ],
+      "matchedIds": [
+        "SEC-004",
+        "SEC-001",
+        "SEC-003",
+        "SEC-005",
+        "PRV-002",
+        "LEG-003",
+        "PRV-001",
+        "LEG-004",
+        "SEC-006",
+        "ALN-002",
+        "ALN-001"
+      ],
+      "unmatched": [
+        "SEC-010 [Low] src/server.js:5 Missing security headers",
+        "SEC-011 [Low] package.json:10 No lockfile; jsonwebtoken 8.x with known CVEs",
+        "PRV-003 [Medium] src/db.js:- No deletion, retention, or data-subject rights mechanism",
+        "LEG-005 [Low] LICENSE:1 Truncated MIT license text",
+        "COR-001 [High] src/server.js:6 Signup form posts urlencoded but only JSON parser registered",
+        "COR-002 [Medium] src/routes/auth.js:20 No input validation; missing password throws TypeError",
+        "COR-003 [Medium] src/routes/auth.js:25 Unhandled analytics fetch rejection may crash process",
+        "COR-004 [Medium] src/db.js:4 No database schema or migrations",
+        "COR-005 [Medium] package.json:6 No tests or test script"
+      ]
+    },
+    "runDir": "<harness>\\runs\\2026-10-15_06-19-59_audit-fixture-webapp-vuln-viMftB",
+    "costUsd": 0.9844134,
+    "exitCode": 2
+  }
+]

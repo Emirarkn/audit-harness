@@ -1,0 +1,114 @@
+# Final-stage audit for a project repository.
+# Copy this file to <your project>/.github/workflows/audit.yml. Setup: README.md → "GitHub Actions".
+#
+# Runs when:
+#   - you start it by hand (Actions → Final-stage audit → Run workflow), or
+#   - a pull request carries the label "audit" (add the label when the work is ready for review).
+# Each run is one Opus audit billed to ANTHROPIC_API_KEY, so it is never triggered automatically on
+# every push.
+
+name: Final-stage audit
+
+on:
+  workflow_dispatch:
+    inputs:
+      request:
+        description: 'What was originally asked for (optional; REQUIREMENTS.md in the repo is better)'
+        required: false
+        default: ''
+  pull_request:
+    types: [labeled, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write   # only for the sticky audit comment
+
+concurrency:
+  group: audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    # PRs: only with the "audit" label, and never from forks (they get no secrets, and their code
+    # must not run with your API key).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (contains(github.event.pull_request.labels.*.name, 'audit') &&
+       github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the project
+        uses: actions/checkout@v4
+        with:
+          path: project
+          fetch-depth: 0          # history lets gitleaks find secrets that were committed and removed
+          persist-credentials: false
+
+      - name: Check out the audit harness
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.AUDIT_HARNESS_REPO }}     # e.g. your-user/audit-harness
+          ref: ${{ vars.AUDIT_HARNESS_REF || 'main' }}
+          token: ${{ secrets.AUDIT_HARNESS_TOKEN || github.token }}
+          path: harness
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install scanners and Claude Code
+        run: |
+          bash harness/scripts/install-scanners.sh
+          npm install -g @anthropic-ai/claude-code
+
+      - name: Run the audit
+        id: audit
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AUDIT_REQUEST_TEXT: ${{ github.event.inputs.request }}
+          AUDIT_BUDGET_USD: ${{ vars.AUDIT_BUDGET_USD || '10' }}
+        run: |
+          set +e
+          node harness/scripts/audit.mjs project --yes --sandbox --budget "$AUDIT_BUDGET_USD"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Post the result
+        if: always() && steps.audit.outcome != 'skipped'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          node harness/scripts/pr-comment.mjs project/AUDIT_REPORT.md --exit-code "${{ steps.audit.outputs.code }}" \
+            ${{ github.event_name == 'pull_request' && '--post' || '' }}
+
+      - name: Upload the report and run artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: audit-report
+          retention-days: 30
+          # transcript.jsonl is left out: it can contain file contents (and secrets) the auditor read.
+          path: |
+            project/AUDIT_REPORT.md
+            harness/runs/*/result.json
+            harness/runs/*/runner.log
+            harness/runs/*/guard.log
+            harness/runs/*/lesson-candidates.json
+            harness/runs/*/scans/
+          if-no-files-found: warn
+
+      - name: Release gate
+        if: always() && steps.audit.outcome != 'skipped'
+        run: |
+          code="${{ steps.audit.outputs.code }}"
+          case "$code" in
+            0) echo "Verdict allows release (Ship / Ship with fixes)." ;;
+            2) echo "::error::Audit verdict: Do not ship"; exit 1 ;;
+            3) echo "::error::Permission violation during the audit"; exit 1 ;;
+            *) echo "::error::Audit run error (exit code $code)"; exit 1 ;;
+          esac

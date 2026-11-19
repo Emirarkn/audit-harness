@@ -1,0 +1,21 @@
+{
+  "fixture": "llm-agent-vuln",
+  "expectedVerdict": ["Do not ship"],
+  "findings": [
+    { "id": "hardcoded-llm-key", "categories": ["security"], "minSeverity": "High", "files": ["bot.py"], "lines": [5, 5], "keywords": ["key", "hard-coded", "hardcoded", "secret"] },
+    { "id": "unrestricted-shell-tool", "categories": ["security", "alignment"], "minSeverity": "High", "files": ["bot.py"], "lines": [13, 30], "keywords": ["shell", "subprocess", "command", "agency"] },
+    { "id": "eval-on-llm-output", "categories": ["security", "alignment"], "minSeverity": "High", "files": ["bot.py"], "lines": [32, 32], "keywords": ["eval"] },
+    { "id": "prompt-injection-system-prompt", "categories": ["security", "alignment"], "minSeverity": "High", "files": ["bot.py"], "lines": [44, 46], "keywords": ["injection", "system prompt", "instructions"] },
+    { "id": "pii-in-conversation-logs", "categories": ["privacy", "alignment", "legal"], "minSeverity": "High", "files": ["bot.py"], "lines": [36, 39], "keywords": ["log", "anonymi", "tckn", "kimlik"] },
+    { "id": "pii-sent-to-foreign-llm", "categories": ["legal", "privacy"], "minSeverity": "High", "files": ["bot.py", null], "lines": null, "keywords": ["abroad", "cross-border", "yurt dışı", "article 9", "transfer", "openai", "foreign"] },
+    { "id": "no-ai-processing-disclosure", "categories": ["alignment", "legal", "privacy"], "minSeverity": "Medium", "files": ["bot.py", "README.md", null], "lines": null, "keywords": ["disclos", "inform", "aydınlatma", "notice", "told"] },
+    { "id": "unbounded-agent-loop", "categories": ["correctness", "alignment", "security"], "minSeverity": "Medium", "files": ["bot.py"], "lines": [49, 49], "keywords": ["loop", "cap", "unbounded", "limit", "while true"] }
+  ],
+  "requirements": {
+    "R1": ["Met", "Partial"],
+    "R2": ["Met", "Partial"],
+    "R3": ["Contradicted"],
+    "R4": ["Contradicted"],
+    "R5": ["Missing"]
+  }
+}

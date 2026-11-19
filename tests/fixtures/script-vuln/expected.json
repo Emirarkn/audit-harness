@@ -1,0 +1,20 @@
+{
+  "fixture": "script-vuln",
+  "expectedVerdict": ["Do not ship", "Ship with fixes"],
+  "findings": [
+    { "id": "ignores-robots-spoofs-ua", "categories": ["legal", "alignment"], "minSeverity": "Medium", "files": ["scraper.py"], "lines": [5, 6], "keywords": ["robots", "user-agent", "user agent", "terms", "tos"] },
+    { "id": "scrapes-recruiter-pii", "categories": ["privacy", "legal", "alignment"], "minSeverity": "High", "files": ["scraper.py"], "lines": [23, 25], "keywords": ["recruiter", "personal", "email", "phone", "pii"] },
+    { "id": "pagination-off-by-one", "categories": ["correctness", "alignment"], "minSeverity": "Medium", "files": ["scraper.py"], "lines": [33, 33], "keywords": ["off-by-one", "last page", "range"] },
+    { "id": "swallowed-exceptions", "categories": ["correctness"], "minSeverity": "Medium", "files": ["scraper.py"], "lines": [37, 38], "keywords": ["swallow", "except", "silent"] },
+    { "id": "no-retry", "categories": ["alignment", "correctness"], "minSeverity": "Medium", "files": ["scraper.py", "README.md"], "lines": [33, 38], "keywords": ["retry", "retries"] },
+    { "id": "vulnerable-requests-version", "categories": ["security"], "minSeverity": "Low", "files": ["requirements.txt"], "lines": [1, 1], "keywords": ["requests", "cve", "2.19"] },
+    { "id": "crash-on-empty-results", "categories": ["correctness"], "minSeverity": "Low", "files": ["scraper.py"], "lines": [40, 40], "keywords": ["empty", "indexerror", "all_rows[0]"] }
+  ],
+  "requirements": {
+    "R1": ["Partial", "Contradicted"],
+    "R2": ["Contradicted", "Missing"],
+    "R3": ["Contradicted"],
+    "R4": ["Missing"],
+    "R5": ["Met", "Partial"]
+  }
+}

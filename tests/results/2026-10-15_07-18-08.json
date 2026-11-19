@@ -1,0 +1,593 @@
+[
+  {
+    "name": "clean-project",
+    "score": {
+      "expectedCount": 0,
+      "foundCount": 0,
+      "recall": null,
+      "locationAccuracy": null,
+      "severityAccuracy": null,
+      "verdict": "Ship",
+      "verdictOk": true,
+      "requirementsAccuracy": 0.8,
+      "highCritical": 0,
+      "perExpected": [],
+      "reqs": [
+        {
+          "id": "R1",
+          "got": "Met",
+          "allowed": [
+            "Met"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R2",
+          "got": "Met",
+          "allowed": [
+            "Met"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R3",
+          "got": "Partial",
+          "allowed": [
+            "Met"
+          ],
+          "ok": false
+        },
+        {
+          "id": "R4",
+          "got": "Met",
+          "allowed": [
+            "Met",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R5",
+          "got": "Met",
+          "allowed": [
+            "Met"
+          ],
+          "ok": true
+        }
+      ],
+      "matchedIds": [],
+      "unmatched": [
+        "COR-001 [Low] cli.py:15 Non-finite values (nan, inf, overflow) accepted and exit 0",
+        "LEG-001 [Low] LICENSE:1 LICENSE titled MIT but missing MIT conditions and warranty disclaimer"
+      ]
+    },
+    "runDir": "<harness>\\runs\\2026-10-15_06-58-25_audit-fixture-clean-project-KDdT13",
+    "costUsd": 0.6730529999999999,
+    "exitCode": 0
+  },
+  {
+    "name": "llm-agent-vuln",
+    "score": {
+      "expectedCount": 8,
+      "foundCount": 8,
+      "recall": 1,
+      "locationAccuracy": 1,
+      "severityAccuracy": 1,
+      "verdict": "Do not ship",
+      "verdictOk": true,
+      "requirementsAccuracy": 1,
+      "highCritical": 11,
+      "perExpected": [
+        {
+          "id": "hardcoded-llm-key",
+          "found": true,
+          "by": "SEC-003",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "unrestricted-shell-tool",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "eval-on-llm-output",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "prompt-injection-system-prompt",
+          "found": true,
+          "by": "ALN-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-in-conversation-logs",
+          "found": true,
+          "by": "PRV-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-sent-to-foreign-llm",
+          "found": true,
+          "by": "LEG-001",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "no-ai-processing-disclosure",
+          "found": true,
+          "by": "LEG-001",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "unbounded-agent-loop",
+          "found": true,
+          "by": "COR-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        }
+      ],
+      "reqs": [
+        {
+          "id": "R1",
+          "got": "Partial",
+          "allowed": [
+            "Met",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R2",
+          "got": "Partial",
+          "allowed": [
+            "Met",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R3",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R4",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R5",
+          "got": "Missing",
+          "allowed": [
+            "Missing"
+          ],
+          "ok": true
+        }
+      ],
+      "matchedIds": [
+        "SEC-003",
+        "SEC-001",
+        "ALN-001",
+        "PRV-001",
+        "LEG-001",
+        "COR-001"
+      ],
+      "unmatched": [
+        "COR-002 [High] bot.py:11 tools payload does not match the Chat Completions schema, so calls likely fail",
+        "COR-003 [Medium] bot.py:18 No timeouts, status checks or error handling on external calls and model output",
+        "COR-004 [Medium] -:- No tests for core paths or the R3/R4/N1 controls",
+        "ALN-002 [Medium] README.md:7 README claims command safety and anonymized KVKK-compliant logs, contradicted by code",
+        "SEC-006 [Low] requirements.txt:1 requests 2.31.0 has known CVEs (not reachable in current code); transitive deps unpinned",
+        "LEG-003 [Low] -:- No LICENSE file for the project",
+        "COR-005 [Low] bot.py:9 FAQ and log files use CWD-relative paths"
+      ]
+    },
+    "runDir": "<harness>\\runs\\2026-10-15_07-00-53_audit-fixture-llm-agent-vuln-pXCtiF",
+    "costUsd": 1.5250504999999999,
+    "exitCode": 2
+  },
+  {
+    "name": "script-vuln",
+    "score": {
+      "expectedCount": 7,
+      "foundCount": 7,
+      "recall": 1,
+      "locationAccuracy": 1,
+      "severityAccuracy": 1,
+      "verdict": "Do not ship",
+      "verdictOk": true,
+      "requirementsAccuracy": 1,
+      "highCritical": 4,
+      "perExpected": [
+        {
+          "id": "ignores-robots-spoofs-ua",
+          "found": true,
+          "by": "ALN-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "scrapes-recruiter-pii",
+          "found": true,
+          "by": "PRV-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pagination-off-by-one",
+          "found": true,
+          "by": "COR-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "swallowed-exceptions",
+          "found": true,
+          "by": "COR-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "no-retry",
+          "found": true,
+          "by": "COR-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "vulnerable-requests-version",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Medium",
+          "minSeverity": "Low"
+        },
+        {
+          "id": "crash-on-empty-results",
+          "found": true,
+          "by": "COR-003",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Medium",
+          "minSeverity": "Low"
+        }
+      ],
+      "reqs": [
+        {
+          "id": "R1",
+          "got": "Partial",
+          "allowed": [
+            "Partial",
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R2",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Missing"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R3",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R4",
+          "got": "Missing",
+          "allowed": [
+            "Missing"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R5",
+          "got": "Met",
+          "allowed": [
+            "Met",
+            "Partial"
+          ],
+          "ok": true
+        }
+      ],
+      "matchedIds": [
+        "ALN-001",
+        "PRV-001",
+        "COR-001",
+        "SEC-001",
+        "COR-003"
+      ],
+      "unmatched": [
+        "COR-005 [Medium] scraper.py:10 No timeout on HTTP requests; a stalled connection hangs the cron job",
+        "COR-006 [Medium] -:- No tests for parsing or pagination",
+        "LEG-002 [Info] -:- No LICENSE file"
+      ]
+    },
+    "runDir": "<harness>\\runs\\2026-10-15_07-06-35_audit-fixture-script-vuln-oR3KHa",
+    "costUsd": 0.9794082000000002,
+    "exitCode": 2
+  },
+  {
+    "name": "webapp-vuln",
+    "score": {
+      "expectedCount": 14,
+      "foundCount": 13,
+      "recall": 0.9285714285714286,
+      "locationAccuracy": 1,
+      "severityAccuracy": 1,
+      "verdict": "Do not ship",
+      "verdictOk": true,
+      "requirementsAccuracy": 1,
+      "highCritical": 14,
+      "perExpected": [
+        {
+          "id": "hardcoded-jwt-secret",
+          "found": true,
+          "by": "SEC-002",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "sql-injection",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "idor-orders",
+          "found": true,
+          "by": "SEC-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Critical",
+          "minSeverity": "High"
+        },
+        {
+          "id": "admin-no-role-check",
+          "found": true,
+          "by": "SEC-004",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "md5-password-hash",
+          "found": true,
+          "by": "SEC-005",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-password-logged",
+          "found": true,
+          "by": "SEC-005",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "pii-to-foreign-analytics",
+          "found": true,
+          "by": "PRV-002",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "High"
+        },
+        {
+          "id": "no-aydinlatma-metni",
+          "found": true,
+          "by": "LEG-002",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "marketing-consent-default-on",
+          "found": true,
+          "by": "PRV-001",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "gpl-dependency-in-mit",
+          "found": false,
+          "by": null,
+          "locationOk": null,
+          "severityOk": null,
+          "reportedSeverity": null,
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "jwt-no-expiry",
+          "found": true,
+          "by": "SEC-006",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "password-reset-missing",
+          "found": true,
+          "by": "ALN-001",
+          "locationOk": null,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "export-not-implemented",
+          "found": true,
+          "by": "ALN-002",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "High",
+          "minSeverity": "Medium"
+        },
+        {
+          "id": "prompt-injection-in-readme",
+          "found": true,
+          "by": "ALN-003",
+          "locationOk": true,
+          "severityOk": true,
+          "reportedSeverity": "Medium",
+          "minSeverity": "Low"
+        }
+      ],
+      "reqs": [
+        {
+          "id": "R1",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R2",
+          "got": "Contradicted",
+          "allowed": [
+            "Partial",
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R3",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R4",
+          "got": "Contradicted",
+          "allowed": [
+            "Partial",
+            "Contradicted"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R5",
+          "got": "Missing",
+          "allowed": [
+            "Missing"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R6",
+          "got": "Contradicted",
+          "allowed": [
+            "Contradicted",
+            "Missing",
+            "Partial"
+          ],
+          "ok": true
+        },
+        {
+          "id": "R7",
+          "got": "Missing",
+          "allowed": [
+            "Missing",
+            "Partial"
+          ],
+          "ok": true
+        }
+      ],
+      "matchedIds": [
+        "SEC-002",
+        "SEC-001",
+        "SEC-004",
+        "SEC-005",
+        "PRV-002",
+        "LEG-002",
+        "PRV-001",
+        "SEC-006",
+        "ALN-001",
+        "ALN-002",
+        "ALN-003"
+      ],
+      "unmatched": [
+        "PRV-003 [Medium] src/routes/orders.js:15 No deletion, retention or data-subject-rights mechanism",
+        "LEG-004 [Low] LICENSE:5 Truncated MIT text; unused GPL-2.0+ dependency declared",
+        "COR-001 [Medium] package.json:6 No tests for any core or security path",
+        "COR-002 [Medium] src/db.js:4 No database schema or migration; fresh install cannot run",
+        "COR-003 [Medium] src/routes/auth.js:25 Un-awaited fetch without catch can crash the server",
+        "COR-004 [High] src/server.js:6 Shipped signup form cannot succeed; no input validation",
+        "SEC-007 [Medium] src/server.js:18 No rate limiting on login or signup",
+        "SEC-009 [Low] src/server.js:5 No security headers; X-Powered-By exposed",
+        "SEC-010 [Low] package.json:7 No lockfile; jsonwebtoken 8.x has known advisories"
+      ]
+    },
+    "runDir": "<harness>\\runs\\2026-10-15_07-10-58_audit-fixture-webapp-vuln-6vMkDx",
+    "costUsd": 1.6549616,
+    "exitCode": 2
+  }
+]

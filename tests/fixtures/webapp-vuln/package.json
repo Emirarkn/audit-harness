@@ -1,0 +1,14 @@
+{
+  "name": "shoplite",
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "src/server.js",
+  "scripts": { "start": "node src/server.js" },
+  "dependencies": {
+    "@ckeditor/ckeditor5-build-classic": "^41.4.2",
+    "express": "^4.17.1",
+    "jsonwebtoken": "^8.5.1",
+    "node-fetch": "^2.6.7",
+    "sqlite3": "^5.1.6"
+  }
+}

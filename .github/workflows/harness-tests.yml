@@ -1,0 +1,25 @@
+# The harness's own CI: free unit tests (guard, linter, scorer, sandbox planning, lessons, PR
+# comment) on every push. Real fixture audits (npm run score) cost model usage and stay manual.
+name: Harness tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm test

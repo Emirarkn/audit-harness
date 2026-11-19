@@ -1,0 +1,38 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write",
+      "Bash",
+      "WebSearch",
+      "WebFetch",
+      "TodoWrite",
+      "ToolSearch"
+    ],
+    "deny": [
+      "Edit",
+      "MultiEdit",
+      "NotebookEdit",
+      "Agent",
+      "Task",
+      "PowerShell",
+      "Skill"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"__GUARD__\"",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
+  }
+}

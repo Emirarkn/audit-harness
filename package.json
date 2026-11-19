@@ -1,0 +1,16 @@
+{
+  "name": "audit-harness",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "repository": { "type": "git", "url": "git+https://github.com/Emirarkn/audit-harness.git" },
+  "type": "module",
+  "description": "Final-stage project audit harness for Claude Code (Opus 5.5, high effort)",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test \"tests/*.test.mjs\"",
+    "audit": "node scripts/audit.mjs",
+    "score": "node tests/score.mjs",
+    "lessons": "node scripts/lessons.mjs"
+  }
+}

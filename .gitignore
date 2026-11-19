@@ -1,0 +1,15 @@
+# Per-run artifacts (transcripts, scan output, guard logs)
+runs/
+# Scratch copies made by the test scorer
+tests/.tmp/
+node_modules/
+# Local Claude Code state and secrets
+.claude/
+.env
+.env.*
+# Reports written into audited projects, if one is ever run from here
+AUDIT_REPORT.md
+.audit/
+.DS_Store
+Thumbs.db
+__pycache__/

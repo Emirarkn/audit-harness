@@ -1,0 +1,12 @@
+# Fixture projects contain deliberately planted FAKE secrets (see CLAUDE.md B2).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "planted fake secrets in test fixtures"
+paths = [
+  '''tests/fixtures/''',
+  # guard/lesson tests feed the AWS documentation example key to the secret detectors
+  '''tests/guard\.test\.mjs''',
+  '''tests/lessons\.test\.mjs''',
+]
